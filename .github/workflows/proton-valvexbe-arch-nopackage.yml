@@ -1,4 +1,4 @@
-name: Proton Valve exp nopackage Arch Linux CI
+name: Proton Valve xbe nopackage Arch Linux CI
 
 on:
   schedule:
