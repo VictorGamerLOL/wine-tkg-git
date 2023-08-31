@@ -1,0 +1,37 @@
+name: Wine valve exp bypass-comp
+
+on:
+  schedule:
+    - cron: "45 8,20 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Compile
+        run: |
+          echo -e "[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
+          echo -e "[core-testing]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
+          echo -e "[extra-testing]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
+          pacman -Syu --noconfirm base-devel sudo
+          useradd user -G wheel && echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown user -R . && cd wine-tkg-git
+          # Workaround for jack&jack2 conflict https://github.com/Frogging-Family/wine-tkg-git/issues/237
+          sed -i "/'jack2'                 'lib32-jack2'/d" PKGBUILD
+          sed -i "/'gst-plugins-good'      'lib32-gst-plugins-good'/d" PKGBUILD 
+          sed -i 's/_mk11_fix=true/_mk11_fix=false/' customization.cfg
+          sed -i 's/_EXTERNAL_INSTALL="false"/_EXTERNAL_INSTALL="true"/' customization.cfg
+          sed -i 's/_LOCAL_PRESET=""/_LOCAL_PRESET="valve-exp"/' customization.cfg
+          sed -i 's/_proton_fs_hack="false"/_proton_fs_hack="true"/' customization.cfg
+          sed -i 's/_FS_bypass_compositor="false"/_FS_bypass_compositor="true"' customization.cfg
+          su user -c "yes|PKGDEST=/tmp/wine-tkg makepkg --noconfirm -s"
+
+      - name: Archive the artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wine-tkg-build
+          path: /tmp/wine-tkg
